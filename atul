@@ -37,3 +37,63 @@ public class YourController {
         }
     }
 }
+ 
+ 
+ 
+ // sol2 
+ @RestController
+@RequestMapping("/students")
+public class StudentController {
+
+    @Autowired
+    private StudentService studentService;
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateStudent(@PathVariable Long id, @RequestBody Map<String, Object> updatedFields) {
+        try {
+            studentService.updateStudent(id, updatedFields);
+            return ResponseEntity.ok("Student details updated successfully.");
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update student details.");
+        }
+    }
+}
+
+
+@Service
+public class StudentService {
+    
+    @Autowired
+    private StudentRepository studentRepository;
+    
+    public void updateStudent(Long studentId, Map<String, Object> updatedFields) {
+        Optional<Student> optionalStudent = studentRepository.findById(studentId);
+        
+        if (optionalStudent.isPresent()) {
+            Student student = optionalStudent.get();
+            
+            // Iterate over the updated fields map and set the new values
+            for (Map.Entry<String, Object> entry : updatedFields.entrySet()) {
+                String field = entry.getKey();
+                Object value = entry.getValue();
+                
+                // Use reflection to set the field value dynamically
+                try {
+                    Field declaredField = student.getClass().getDeclaredField(field);
+                    declaredField.setAccessible(true);
+                    declaredField.set(student, value);
+                } catch (NoSuchFieldException | IllegalAccessException e) {
+                    throw new IllegalArgumentException("Invalid field: " + field);
+                }
+            }
+            
+            studentRepository.save(student);
+        } else {
+            throw new NotFoundException("Student not found with ID: " + studentId);
+        }
+    }
+}
