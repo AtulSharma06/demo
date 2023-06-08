@@ -1,0 +1,135 @@
+
+Certainly! Here's an example of the complete API code in Spring Boot for the login authentication process, including the controller, service, repository, and model classes:
+
+Model classes:
+java
+Copy code
+@Entity
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String password;
+
+    // Getters and setters, constructors, etc.
+}
+
+public class LoginRequest {
+    private String username;
+    private String password;
+
+    // Getters and setters
+}
+
+public class AuthResponse {
+    private String token;
+
+    // Constructor, getters, and setters
+}
+
+
+
+Repository:
+java
+Copy code
+
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+    User findByUsername(String username);
+}
+
+
+Service:
+java
+Copy code
+
+
+
+@Service
+public class AuthService {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    public String authenticateUser(String username, String password) {
+        User user = userRepository.findByUsername(username);
+        if (user == null || !password.equals(user.getPassword())) {
+            throw new InvalidCredentialsException("Invalid username or password");
+        }
+
+        String token = jwtUtil.generateToken(user.getId());
+        return token;
+    }
+}
+
+
+Controller:
+java
+Copy code
+
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @Autowired
+    private AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+        try {
+            String token = authService.authenticateUser(loginRequest.getUsername(), loginRequest.getPassword());
+            return ResponseEntity.ok(new AuthResponse(token));
+        } catch (InvalidCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        }
+    }
+}
+
+
+JWT Utility class:
+java
+Copy code
+
+
+@Component
+public class JwtUtil {
+
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+    @Value("${jwt.expiration}")
+    private int expiration;
+
+    public String generateToken(Long userId) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expiration * 1000);
+
+        return Jwts.builder()
+                .setSubject(String.valueOf(userId))
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(SignatureAlgorithm.HS512, secretKey)
+                .compact();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public Long getUserIdFromToken(String token) {
+        Claims claims = Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
+        return Long.parseLong(claims.getSubject());
+    }
+}
