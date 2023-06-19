@@ -1,0 +1,67 @@
+dependencies {
+    // Other dependencies...
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
+    implementation 'org.apache.logging.log4j:log4j-api'
+    implementation 'org.apache.logging.log4j:log4j-core'
+}
+
+
+///////////////
+
+
+
+logging:
+  level:
+    root: INFO
+    com.example.myapp: DEBUG
+  file: logs/myapp.log
+
+
+///////
+
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+        </Console>
+        <File name="File" fileName="${sys:user.home}/logs/myapp.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+        </File>
+    </Appenders>
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="File" />
+        </Root>
+        <Logger name="com.example.myapp" level="debug" additivity="false">
+            <AppenderRef ref="Console" />
+            <AppenderRef ref="File" />
+        </Logger>
+    </Loggers>
+</Configuration>
+
+//////////
+
+
+
+
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+@RestController
+public class MyController {
+
+    private static final Logger logger = LogManager.getLogger(MyController.class);
+
+    @GetMapping("/my-endpoint")
+    public String myEndpoint() {
+        logger.debug("Debug log message");
+        logger.info("Info log message");
+        logger.error("Error log message");
+
+        // Rest of your code...
+    }
+}
